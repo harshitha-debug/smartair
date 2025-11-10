@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-City Industrial Pollution Analyzer</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --success-color: #27ae60;
+            --light-bg: #ecf0f1;
+            --mumbai-color: #3498db;
+            --delhi-color: #e74c3c;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+        
+        .dashboard-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            margin: 20px auto;
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-weight: 700;
+            font-size: 2.5rem;
+        }
+        
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+        
+        .control-panel {
+            background: white;
+            padding: 30px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .graph-container {
+            padding: 30px;
+            min-height: 600px;
+        }
+        
+        .stats-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin: 15px 0;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            border-left: 5px solid var(--secondary-color);
+            transition: transform 0.3s ease;
+        }
+        
+        .stats-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .stats-card h5 {
+            color: var(--primary-color);
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+        
+        .stats-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--secondary-color);
+        }
+        
+        .form-control {
+            border-radius: 10px;
+            border: 2px solid #e9ecef;
+            padding: 12px 15px;
+            transition: all 0.3s ease;
+        }
+        
+        .form-control:focus {
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--secondary-color), #2980b9);
+            border: none;
+            border-radius: 10px;
+            padding: 12px 30px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+        }
+        
+        .loading-spinner {
+            display: none;
+            text-align: center;
+            padding: 50px;
+        }
+        
+        .alert-info {
+            background: linear-gradient(135deg, #74b9ff, #0984e3);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 20px;
+        }
+        
+        .nav-tabs {
+            border-bottom: 2px solid #dee2e6;
+        }
+        
+        .nav-tabs .nav-link {
+            border: none;
+            color: var(--primary-color);
+            font-weight: 600;
+            padding: 15px 25px;
+            border-radius: 10px 10px 0 0;
+        }
+        
+        .nav-tabs .nav-link.active {
+            background: var(--secondary-color);
+            color: white;
+        }
+        
+        .tech-badge {
+            background: linear-gradient(135deg, var(--success-color), #2ecc71);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        
+        .city-badge {
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin: 0 5px;
+        }
+        
+        .mumbai-badge {
+            background: linear-gradient(135deg, var(--mumbai-color), #2980b9);
+            color: white;
+        }
+        
+        .delhi-badge {
+            background: linear-gradient(135deg, var(--delhi-color), #c0392b);
+            color: white;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        .comparison-graph {
+            height: 700px;
+        }
+
+        .city-stats {
+            border-left: 4px solid;
+            padding-left: 15px;
+        }
+
+        .mumbai-stats {
+            border-left-color: var(--mumbai-color);
+        }
+
+        .delhi-stats {
+            border-left-color: var(--delhi-color);
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row justify-content-center">
+            <div class="col-12 col-xl-10">
+                <div class="dashboard-container">
+                    <!-- Header -->
+                    <div class="header">
+                        <h1><i class="fas fa-industry me-3"></i>SmartAir: Multi-City Pollution Analyzer</h1>
+                        <p>ML-Powered Analysis & Sol-Gel Technology Impact Assessment</p>
+                        <div class="d-flex justify-content-center mt-2">
+                            <div class="tech-badge d-inline-block me-2">
+                                <i class="fas fa-robot me-2"></i>Machine Learning Forecasting
+                            </div>
+                            <div class="city-badge mumbai-badge">
+                                <i class="fas fa-city me-2"></i>Mumbai
+                            </div>
+                            <div class="city-badge delhi-badge">
+                                <i class="fas fa-city me-2"></i>Delhi
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Control Panel -->
+                    <div class="control-panel">
+                        <div class="alert alert-info">
+                            <h5><i class="fas fa-info-circle me-2"></i>🌱 Why It Matters</h5>
+                            <p class="mb-0">Industrial and vehicular emissions are major causes of India’s air pollution, with industries contributing around 51% and vehicles about 27%. This system uses Machine Learning to analyze pollution trends and demonstrates how Sol-Gel technology can achieve up to 30% reduction in industrial emissions, promoting cleaner and sustainable growth.</p>
+                        </div>
+
+                        <div class="row g-4 mt-2">
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold">City</label>
+                                <select class="form-select" id="city">
+                                    <option value="mumbai">Mumbai</option>
+                                    <option value="delhi">Delhi</option>
+                                    <option value="comparison">Compare Both Cities</option>
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold">Analysis Type</label>
+                                <select class="form-select" id="analysisType">
+                                    <option value="yearly">Yearly Trends (2021-2028)</option>
+                                    <option value="monthly">Monthly Pattern</option>
+                                    <option value="daily">Daily Analysis</option>
+                                    <option value="hourly">Hourly Analysis</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-2" id="yearInput">
+                                <label class="form-label fw-bold">Year</label>
+                                <input type="number" class="form-control" id="year" min="2021" max="2028" value="2024">
+                            </div>
+
+                            <div class="col-md-2" id="monthInput" style="display: none;">
+                                <label class="form-label fw-bold">Month</label>
+                                <select class="form-select" id="month">
+                                    <option value="1">January</option>
+                                    <option value="2">February</option>
+                                    <option value="3">March</option>
+                                    <option value="4">April</option>
+                                    <option value="5">May</option>
+                                    <option value="6">June</option>
+                                    <option value="7">July</option>
+                                    <option value="8">August</option>
+                                    <option value="9">September</option>
+                                    <option value="10">October</option>
+                                    <option value="11">November</option>
+                                    <option value="12">December</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-2" id="dayInput" style="display: none;">
+                                <label class="form-label fw-bold">Day</label>
+                                <input type="number" class="form-control" id="day" min="1" max="31" value="15">
+                            </div>
+
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button class="btn btn-primary w-100" onclick="generateGraph()">
+                                    <i class="fas fa-chart-line me-2"></i>Generate Analysis
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Loading Spinner -->
+                    <div class="loading-spinner" id="loadingSpinner">
+                        <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-3 text-muted">Training ML model and generating predictions...</p>
+                    </div>
+
+                    <!-- Graph Container -->
+                    <div class="graph-container">
+                        <div id="graph" style="width: 100%; height: 600px;"></div>
+                    </div>
+
+                    <!-- Statistics -->
+                    <div class="row" id="statsContainer" style="display: none;">
+                        <div class="col-md-3">
+                            <div class="stats-card">
+                                <h5><i class="fas fa-fire me-2"></i>Current Pollution</h5>
+                                <div class="stats-value" id="currentPollution">-</div>
+                                <small class="text-muted">Without Sol-Gel</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stats-card">
+                                <h5><i class="fas fa-leaf me-2"></i>With Sol-Gel</h5>
+                                <div class="stats-value text-success" id="reducedPollution">-</div>
+                                <small class="text-muted">After 30% reduction</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stats-card">
+                                <h5><i class="fas fa-chart-line-down me-2"></i>Reduction</h5>
+                                <div class="stats-value text-info" id="reductionPercent">-</div>
+                                <small class="text-muted">Pollution decrease</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stats-card">
+                                <h5><i class="fas fa-brain me-2"></i>Model Accuracy</h5>
+                                <div class="stats-value text-warning" id="modelAccuracy">-</div>
+                                <small class="text-muted">ML Prediction R² Score</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Comparison Statistics -->
+                    <div class="row" id="comparisonStatsContainer" style="display: none;">
+                        <div class="col-md-6">
+                            <div class="stats-card mumbai-stats">
+                                <h5><i class="fas fa-city me-2" style="color: var(--mumbai-color);"></i>Mumbai Statistics</h5>
+                                <div class="row">
+                                    <div class="col-6">
+                                        <div class="fw-bold text-primary">Current</div>
+                                        <div class="stats-value" id="mumbaiCurrent">-</div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="fw-bold text-success">With Sol-Gel</div>
+                                        <div class="stats-value text-success" id="mumbaiReduced">-</div>
+                                    </div>
+                                </div>
+                                <div class="mt-2">
+                                    <small class="text-muted">Accuracy: <span id="mumbaiAccuracy">-</span></small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="stats-card delhi-stats">
+                                <h5><i class="fas fa-city me-2" style="color: var(--delhi-color);"></i>Delhi Statistics</h5>
+                                <div class="row">
+                                    <div class="col-6">
+                                        <div class="fw-bold text-primary">Current</div>
+                                        <div class="stats-value" id="delhiCurrent">-</div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="fw-bold text-success">With Sol-Gel</div>
+                                        <div class="stats-value text-success" id="delhiReduced">-</div>
+                                    </div>
+                                </div>
+                                <div class="mt-2">
+                                    <small class="text-muted">Accuracy: <span id="delhiAccuracy">-</span></small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Backend API endpoint - now only one endpoint!
+        const BACKEND_ENDPOINT = 'http://localhost:5000/api/predict';
+
+        // Handle analysis type changes
+        document.getElementById('analysisType').addEventListener('change', function() {
+            const type = this.value;
+            const yearInput = document.getElementById('yearInput');
+            const monthInput = document.getElementById('monthInput');
+            const dayInput = document.getElementById('dayInput');
+
+            yearInput.style.display = type === 'yearly' ? 'none' : 'block';
+            monthInput.style.display = (type === 'monthly' || type === 'daily' || type === 'hourly') ? 'block' : 'none';
+            dayInput.style.display = type === 'hourly' ? 'block' : 'none';
+            
+            // Update year limits based on correct timeline (2021-2028)
+            const yearInputField = document.getElementById('year');
+            if (type === 'yearly') {
+                yearInputField.min = 2021;
+                yearInputField.max = 2028;
+                yearInputField.value = 2024;
+            } else {
+                yearInputField.min = 2021;
+                yearInputField.max = 2028;
+                yearInputField.value = 2024;
+            }
+        });
+
+        // Initialize
+        document.getElementById('analysisType').dispatchEvent(new Event('change'));
+
+        // Actual API call function - now calls single backend with city parameter
+        async function makeBackendCall(city, analysisType, year, month, day) {
+            const payload = {
+                city: city,
+                analysis_type: analysisType,
+                year: year,
+                month: month,
+                day: day
+            };
+
+            try {
+                const response = await fetch(BACKEND_ENDPOINT, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                return result;
+                
+            } catch (error) {
+                console.error(`API call for ${city} failed:`, error);
+                throw error;
+            }
+        }
+
+        // Generate graph function
+        async function generateGraph() {
+            const city = document.getElementById('city').value;
+            const analysisType = document.getElementById('analysisType').value;
+            const year = parseInt(document.getElementById('year').value);
+            const month = parseInt(document.getElementById('month').value);
+            const day = parseInt(document.getElementById('day').value);
+
+            // Validate inputs for correct timeline
+            if (year < 2021 || year > 2028) {
+                alert('Please enter a year between 2021 and 2028');
+                return;
+            }
+
+            // Show loading
+            document.getElementById('loadingSpinner').style.display = 'block';
+            document.getElementById('statsContainer').style.display = 'none';
+            document.getElementById('comparisonStatsContainer').style.display = 'none';
+
+            try {
+                if (city === 'comparison') {
+                    // Compare both cities - call backend for each city
+                    const [mumbaiResult, delhiResult] = await Promise.all([
+                        makeBackendCall('mumbai', analysisType, year, month, day),
+                        makeBackendCall('delhi', analysisType, year, month, day)
+                    ]);
+                    
+                    if (mumbaiResult.error || delhiResult.error) {
+                        throw new Error(mumbaiResult.error || delhiResult.error);
+                    }
+                    
+                    // Display comparison graph
+                    displayComparisonGraph(mumbaiResult, delhiResult, analysisType, year, month, day);
+                    
+                    // Update comparison statistics
+                    updateComparisonStatistics(mumbaiResult, delhiResult);
+                    
+                } else {
+                    // Single city analysis
+                    const result = await makeBackendCall(city, analysisType, year, month, day);
+                    
+                    if (result.error) {
+                        throw new Error(result.error);
+                    }
+                    
+                    // Display graph with real data
+                    displayGraph(result.predictions, analysisType, year, month, day, city);
+                    
+                    // Update statistics with real metrics
+                    updateStatistics({
+                        currentPollution: result.current_pollution,
+                        reducedPollution: result.reduced_pollution,
+                        reductionPercent: result.reduction_percent,
+                        modelAccuracy: result.model_accuracy
+                    });
+                }
+                
+                // Hide loading
+                document.getElementById('loadingSpinner').style.display = 'none';
+                
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('loadingSpinner').style.display = 'none';
+                alert('Error generating analysis. Please make sure the backend server is running on port 5000. Error: ' + error.message);
+            }
+        }
+
+        // Display graph for single city
+        function displayGraph(graphData, analysisType, year, month, day, city) {
+            let xValues, title, xTitle;
+            let trace1, trace2;
+
+            if (analysisType === 'yearly') {
+                xValues = graphData.map(d => d.year);
+                title = `${city.charAt(0).toUpperCase() + city.slice(1)} - Yearly Industrial Pollution Trends (2021-2028)<br>ML Forecasting - 30% Reduction with Sol-Gel Technology`;
+                xTitle = 'Year';
+                
+            } else if (analysisType === 'monthly') {
+                xValues = graphData.map(d => d.month);
+                title = `${city.charAt(0).toUpperCase() + city.slice(1)} - Monthly Industrial Pollution Pattern - ${year}<br>30% Reduction with Sol-Gel Technology`;
+                xTitle = 'Month';
+                
+            } else if (analysisType === 'daily') {
+                xValues = graphData.map(d => d.day);
+                const monthName = new Date(year, month - 1).toLocaleString('default', { month: 'long' });
+                title = `${city.charAt(0).toUpperCase() + city.slice(1)} - Daily Industrial Pollution - ${monthName} ${year}<br>30% Reduction with Sol-Gel Technology`;
+                xTitle = 'Day of Month';
+                
+            } else if (analysisType === 'hourly') {
+                xValues = graphData.map(d => d.hour);
+                const dateStr = new Date(year, month - 1, day).toLocaleDateString();
+                title = `${city.charAt(0).toUpperCase() + city.slice(1)} - Hourly Industrial Pollution - ${dateStr}<br>30% Reduction with Sol-Gel Technology`;
+                xTitle = 'Time of Day';
+            }
+
+            // Consistent line charts for ALL analysis types
+            trace1 = {
+                x: xValues,
+                y: graphData.map(d => d.without_sol_gel),
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: 'Without Sol-Gel',
+                line: { 
+                    color: '#e74c3c', 
+                    width: analysisType === 'hourly' ? 3 : 4,
+                    shape: 'spline'
+                },
+                marker: { 
+                    size: analysisType === 'hourly' ? 6 : 8,
+                    symbol: 'circle'
+                },
+                fill: 'none'
+            };
+
+            trace2 = {
+                x: xValues,
+                y: graphData.map(d => d.with_sol_gel),
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: 'With Sol-Gel',
+                line: { 
+                    color: '#27ae60', 
+                    width: analysisType === 'hourly' ? 3 : 4,
+                    shape: 'spline'
+                },
+                marker: { 
+                    size: analysisType === 'hourly' ? 6 : 8,
+                    symbol: 'circle'
+                },
+                fill: 'none'
+            };
+
+            const layout = {
+                title: {
+                    text: title,
+                    font: { size: 16, family: 'Arial, sans-serif' }
+                },
+                xaxis: {
+                    title: {
+                        text: xTitle,
+                        font: { size: 14, family: 'Arial, sans-serif' }
+                    },
+                    tickangle: analysisType === 'monthly' ? -45 : 0
+                },
+                yaxis: {
+                    title: {
+                        text: 'Pollution Level (PM2.5)',
+                        font: { size: 14, family: 'Arial, sans-serif' }
+                    }
+                },
+                hovermode: 'closest',
+                showlegend: true,
+                legend: {
+                    x: 0,
+                    y: 1.1,
+                    orientation: 'h',
+                    bgcolor: 'rgba(255,255,255,0.8)'
+                },
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: {
+                    family: 'Arial, sans-serif'
+                },
+                margin: {
+                    l: 60,
+                    r: 40,
+                    b: 80,
+                    t: 80,
+                    pad: 10
+                }
+            };
+
+            Plotly.newPlot('graph', [trace1, trace2], layout, { responsive: true });
+            
+            // Show single city stats
+            document.getElementById('statsContainer').style.display = 'flex';
+            document.getElementById('statsContainer').classList.add('fade-in');
+        }
+
+        // Display comparison graph for both cities
+        function displayComparisonGraph(mumbaiResult, delhiResult, analysisType, year, month, day) {
+            let xValues, title, xTitle;
+            let traces = [];
+
+            if (analysisType === 'yearly') {
+                xValues = mumbaiResult.predictions.map(d => d.year);
+                title = `Mumbai vs Delhi - Yearly Industrial Pollution Trends (2021-2028)<br>ML Forecasting - 30% Reduction with Sol-Gel Technology`;
+                xTitle = 'Year';
+                
+            } else if (analysisType === 'monthly') {
+                xValues = mumbaiResult.predictions.map(d => d.month);
+                title = `Mumbai vs Delhi - Monthly Industrial Pollution Pattern - ${year}<br>30% Reduction with Sol-Gel Technology`;
+                xTitle = 'Month';
+                
+            } else if (analysisType === 'daily') {
+                xValues = mumbaiResult.predictions.map(d => d.day);
+                const monthName = new Date(year, month - 1).toLocaleString('default', { month: 'long' });
+                title = `Mumbai vs Delhi - Daily Industrial Pollution - ${monthName} ${year}<br>30% Reduction with Sol-Gel Technology`;
+                xTitle = 'Day of Month';
+                
+            } else if (analysisType === 'hourly') {
+                xValues = mumbaiResult.predictions.map(d => d.hour);
+                const dateStr = new Date(year, month - 1, day).toLocaleDateString();
+                title = `Mumbai vs Delhi - Hourly Industrial Pollution - ${dateStr}<br>30% Reduction with Sol-Gel Technology`;
+                xTitle = 'Time of Day';
+            }
+
+            // Mumbai traces
+            traces.push({
+                x: xValues,
+                y: mumbaiResult.predictions.map(d => d.without_sol_gel),
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: 'Mumbai - Without Sol-Gel',
+                line: { 
+                    color: '#3498db', 
+                    width: 4,
+                    shape: 'spline'
+                },
+                marker: { 
+                    size: 8,
+                    symbol: 'circle'
+                }
+            });
+
+            traces.push({
+                x: xValues,
+                y: mumbaiResult.predictions.map(d => d.with_sol_gel),
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: 'Mumbai - With Sol-Gel',
+                line: { 
+                    color: '#2980b9', 
+                    width: 4,
+                    shape: 'spline',
+                    dash: 'dot'
+                },
+                marker: { 
+                    size: 8,
+                    symbol: 'circle'
+                }
+            });
+
+            // Delhi traces
+            traces.push({
+                x: xValues,
+                y: delhiResult.predictions.map(d => d.without_sol_gel),
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: 'Delhi - Without Sol-Gel',
+                line: { 
+                    color: '#e74c3c', 
+                    width: 4,
+                    shape: 'spline'
+                },
+                marker: { 
+                    size: 8,
+                    symbol: 'circle'
+                }
+            });
+
+            traces.push({
+                x: xValues,
+                y: delhiResult.predictions.map(d => d.with_sol_gel),
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: 'Delhi - With Sol-Gel',
+                line: { 
+                    color: '#c0392b', 
+                    width: 4,
+                    shape: 'spline',
+                    dash: 'dot'
+                },
+                marker: { 
+                    size: 8,
+                    symbol: 'circle'
+                }
+            });
+
+            const layout = {
+                title: {
+                    text: title,
+                    font: { size: 16, family: 'Arial, sans-serif' }
+                },
+                xaxis: {
+                    title: {
+                        text: xTitle,
+                        font: { size: 14, family: 'Arial, sans-serif' }
+                    },
+                    tickangle: analysisType === 'monthly' ? -45 : 0
+                },
+                yaxis: {
+                    title: {
+                        text: 'Pollution Level (PM2.5)',
+                        font: { size: 14, family: 'Arial, sans-serif' }
+                    }
+                },
+                hovermode: 'closest',
+                showlegend: true,
+                legend: {
+                    x: 0,
+                    y: 1.2,
+                    orientation: 'h',
+                    bgcolor: 'rgba(255,255,255,0.8)'
+                },
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                font: {
+                    family: 'Arial, sans-serif'
+                },
+                margin: {
+                    l: 60,
+                    r: 40,
+                    b: 80,
+                    t: 100,
+                    pad: 10
+                },
+                height: 700
+            };
+
+            Plotly.newPlot('graph', traces, layout, { responsive: true });
+            
+            // Show comparison stats
+            document.getElementById('comparisonStatsContainer').style.display = 'flex';
+            document.getElementById('comparisonStatsContainer').classList.add('fade-in');
+        }
+
+        // Update statistics for single city
+        function updateStatistics(stats) {
+            document.getElementById('currentPollution').textContent = stats.currentPollution;
+            document.getElementById('reducedPollution').textContent = stats.reducedPollution;
+            document.getElementById('reductionPercent').textContent = stats.reductionPercent;
+            document.getElementById('modelAccuracy').textContent = stats.modelAccuracy;
+        }
+
+        // Update comparison statistics
+        function updateComparisonStatistics(mumbaiResult, delhiResult) {
+            document.getElementById('mumbaiCurrent').textContent = mumbaiResult.current_pollution;
+            document.getElementById('mumbaiReduced').textContent = mumbaiResult.reduced_pollution;
+            document.getElementById('mumbaiAccuracy').textContent = mumbaiResult.model_accuracy;
+            
+            document.getElementById('delhiCurrent').textContent = delhiResult.current_pollution;
+            document.getElementById('delhiReduced').textContent = delhiResult.reduced_pollution;
+            document.getElementById('delhiAccuracy').textContent = delhiResult.model_accuracy;
+        }
+
+        // Generate initial graph on page load
+        window.addEventListener('load', function() {
+            generateGraph();
+        });
+    </script>
+</body>
+</html>
